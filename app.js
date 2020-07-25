@@ -1,5 +1,7 @@
 const mysql = require('mysql');
 const inquirer = require('inquirer');
+const { listenerCount } = require('process');
+const { connectableObservableDescriptor } = require('rxjs/internal/observable/ConnectableObservable');
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -22,6 +24,8 @@ const killIt = () => {
 }
 
 const initialPrompts = () => {
+    console.log('\n=======\n');
+
     inquirer.prompt([
         {
             name: 'action',
@@ -54,15 +58,30 @@ const initialPrompts = () => {
                 killIt();
                 break;
         }
-    })
+    });
 }
 
 // artirst serach
 // --   A query which returns all data for songs sung by a specific artist
 const artistSearch = () => {
     console.log('Searching artist...');
+    inquirer.prompt([
+        {
+            type: 'input',
+            message: 'Select an artist',
+            name: 'artist'
+        }
+    ]).then ( answer => {
+        let sqlStatement = `SELECT position, song, year from top5000 where artist = '${answer.artist}' ORDER BY position`;
+        connection.query(sqlStatement, (err, data) => {
+            if (err) throw err;
+            console.log('Songs in top 5000 by ' + answer.artist);
+            console.table(data);
+            initialPrompts();
+        })
+    })
     
-    initialPrompts();
+    
 }
 
 // multiSearch
@@ -77,8 +96,25 @@ const multiSearch = () => {
 // --    A query which returns all data contained within a specific range
 const rangeSearch = () => {
     console.log('rangeSearch...');
-    
-    initialPrompts();
+    inquirer.prompt([
+        {
+            name: 'startPosition',
+            type: 'number',
+            message: 'Starting position for search'
+        },
+        {
+            name: 'endPosition',
+            type: 'number',
+            message: 'Ending position for search'
+        },
+    ]).then( answers => {
+        connection.query(`SELECT position, artist, song, year FROM top5000 WHERE position BETWEEN ${answers.startPosition} AND ${answers.endPosition};`, (err, data) => {
+            if (err) throw err;
+            console.table(data);
+            initialPrompts();
+        })
+    })
+
 }
 
 // --    A query which searches for a specific song in the top 5000 and returns the data for it
